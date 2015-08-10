@@ -19,16 +19,19 @@ namespace itp
     struct static_for;
 
     template <class List>
-    struct static_foreach;
+    struct for_each;
 
     template <class List, int... xs>
-    struct make_static_list;
+    struct _static_list;
 
     template <int... xs>
     struct static_list;
 
-    template<template<int, int> class, class, int=0>
+    template <class List, int accumulator>
     struct reduce;
+
+    template<template<int, int> class, class, int=0>
+    struct _reduce;
 
 
     // Static linked-list node.
@@ -48,18 +51,18 @@ namespace itp
 
 
     template <class List, int x>
-    struct make_static_list<List, x> {
+    struct _static_list<List, x> {
         using value = typename push_front<x, List>::list;
     };
 
     template <class List, int x, int... xs>
-    struct make_static_list<List, x, xs...> {
-        using value = typename make_static_list<typename push_front<x, List>::list, xs...>::value;
+    struct _static_list<List, x, xs...> {
+        using value = typename _static_list<typename push_front<x, List>::list, xs...>::value;
     };
 
     template <int x, int... xs>
     struct static_list<x, xs...> {
-        using value = typename make_static_list<cons<x, nil>, xs...>::value;
+        using value = typename _static_list<cons<x, nil>, xs...>::value;
     };
 
 
@@ -67,14 +70,33 @@ namespace itp
     /* ------- Mutator functions -------- */
 
     template <template<int, int> class Fn, int accumulator, class xs, int x>
-    struct reduce<Fn, cons<x, xs>, accumulator> {
-        static constexpr int value = reduce<Fn, xs, Fn<accumulator, x>::value>::value;
+    struct _reduce<Fn, cons<x, xs>, accumulator> {
+        static constexpr int value = _reduce<Fn, xs, Fn<accumulator, x>::value>::value;
     };
 
     template <template<int, int> class Fn, int accumulator>
-    struct reduce<Fn, nil, accumulator> {
+    struct _reduce<Fn, nil, accumulator> {
         static constexpr int value = accumulator;
     };
+
+
+    template <int data, class List, int accumulator>
+    struct reduce<cons<data, List>, accumulator> {
+        template <class Fn>
+        constexpr int operator ()(Fn const& fn) {
+            return fn(data, reduce<List, accumulator>()(fn));
+        }
+    };
+
+    template <int data, int accumulator>
+    struct reduce<cons<data, nil>, accumulator> {
+        template <class Fn>
+        constexpr int operator ()(Fn const& fn) {
+            return fn(data, accumulator);
+        }
+    };
+
+
 
     template<int x, int y>
     struct add {
@@ -139,18 +161,18 @@ namespace itp
 
 
     template <int data, class List>
-    struct static_foreach<cons<data, List>> {
+    struct for_each<cons<data, List>> {
         template <class Fn>
-        void operator ()(Fn const& fn) {
+        void operator ()(Fn const& fn) const {
             fn(data);
-            static_foreach<List>()(fn);
+            for_each<List>()(fn);
         }
     };
 
     template <int data>
-    struct static_foreach<cons<data, nil>> {
+    struct for_each<cons<data, nil>> {
         template <class Fn>
-        void operator ()(Fn const& fn) {
+        void operator ()(Fn const& fn) const {
             fn(data);
         }
     };

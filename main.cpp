@@ -1,7 +1,6 @@
 #include "tests/tests.h"
 
 int main() {
-    test_static_list<5, 4, 3, 2, 1>();
-
+    test_static_list();
     return 0;
 }
