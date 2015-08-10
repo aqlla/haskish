@@ -6,32 +6,24 @@
 #define HASKISH_TESTS_H
 
 #include <iostream>
-#include "../src/meta.h"
 #include "../src/data_types.h"
 #include "../src/static_list.h"
 
-void test_sum() {
-    using itp::cons;
-    using itp::Int;
-
-    using c1 = Int<1>;
-    using c2 = Int<2>;
-    using c3 = Int<3>;
-
-    using list = cons<c1, cons<c2, cons<c3>>>;
-}
-
+using itp::static_foreach;
+using itp::length;
+using itp::reduce;
+using itp::add;
 
 template <int... xs>
 void test_static_list() {
     using list = typename itp::static_list<xs...>::value;
 
-    itp::static_for_each<list>() ([&](const int value) {
+    static_foreach<list>() ([](int value) {
         std::cout << value << std::endl;
     });
 
-    std::cout << "Size: " << itp::Size<list>::value   << std::endl;
-    std::cout << "Sum:  " << itp::reduce<itp::add, list, 0>::value << std::endl;
+    std::cout << "length: " << length<list>::value << std::endl;
+    std::cout << "Sum:  "   << reduce<add, list>::value << std::endl;
 }
 
 #endif //HASKISH_TESTS_H

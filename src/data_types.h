@@ -6,11 +6,9 @@
 #define HASKISH_DATA_TYPES_H_H
 
 
-namespace itp {
+namespace itp
+{
     struct nil;
-
-    template<class, class=nil>
-    struct cons;
 
     template<class T, T x>
     struct BaseType {

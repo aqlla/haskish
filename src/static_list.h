@@ -9,17 +9,17 @@
 
 namespace itp
 {
-    template <typename T>
-    struct Size;
+    template <class List>
+    struct length;
 
     template <int, class, int=0>
-    struct Get;
+    struct get;
 
     template <int, int>
     struct static_for;
 
     template <class List>
-    struct static_for_each;
+    struct static_foreach;
 
     template <class List, int... xs>
     struct make_static_list;
@@ -27,13 +27,13 @@ namespace itp
     template <int... xs>
     struct static_list;
 
-    template<template<int, int> class, class, int>
+    template<template<int, int> class, class, int=0>
     struct reduce;
 
 
     // Static linked-list node.
     template <int data, class Next=nil>
-    struct Node {
+    struct cons {
         static constexpr int value = data;
         using next = Next;
     };
@@ -42,24 +42,24 @@ namespace itp
     /* ------- Constructor functions -------- */
 
     template <int data, class List>
-    struct PushFront {
-        using list = Node<data, List>;
+    struct push_front {
+        using list = cons<data, List>;
     };
 
 
     template <class List, int x>
     struct make_static_list<List, x> {
-        using value = typename PushFront<x, List>::list;
+        using value = typename push_front<x, List>::list;
     };
 
     template <class List, int x, int... xs>
     struct make_static_list<List, x, xs...> {
-        using value = typename make_static_list<typename PushFront<x, List>::list, xs...>::value;
+        using value = typename make_static_list<typename push_front<x, List>::list, xs...>::value;
     };
 
     template <int x, int... xs>
     struct static_list<x, xs...> {
-        using value = typename make_static_list<Node<x, nil>, xs...>::value;
+        using value = typename make_static_list<cons<x, nil>, xs...>::value;
     };
 
 
@@ -67,7 +67,7 @@ namespace itp
     /* ------- Mutator functions -------- */
 
     template <template<int, int> class Fn, int accumulator, class xs, int x>
-    struct reduce<Fn, Node<x, xs>, accumulator> {
+    struct reduce<Fn, cons<x, xs>, accumulator> {
         static constexpr int value = reduce<Fn, xs, Fn<accumulator, x>::value>::value;
     };
 
@@ -87,32 +87,30 @@ namespace itp
 
     /** Get the length of the list. */
     template <>
-    struct Size<nil> {
+    struct length<nil> {
         static constexpr int value = 0;
     };
 
     template <int data, class List>
-    struct Size<Node<data, List>> {
-        static constexpr int value = 1 + Size<List>::value;
+    struct length<cons<data, List>> {
+        static constexpr int value = 1 + length<List>::value;
     };
 
 
     /** Get the value of a given list element. */
     template <int i, int data, class List, int Begin>
-    struct Get<i, Node<data, List>, Begin> {
+    struct get<i, cons<data, List>, Begin> {
         // the value at the specified index
         static constexpr int value = (i == Begin)
-                                     ? data
-                                     : Get<i, List, Begin+1>::value;
+                                     ? data : get<i, List, Begin+1>::value;
 
         // boolean to check if the index was found.
         static constexpr bool found = (i == Begin)
-                                      ? true
-                                      : Get<i, List, Begin+1>::found;
+                                      ? true : get<i, List, Begin+1>::found;
     };
 
     template <int i, int data, int Begin>
-    struct Get<i, Node<data, nil>, Begin> {
+    struct get<i, cons<data, nil>, Begin> {
         static constexpr int value = (i == Begin) ? data : -1;
         static constexpr bool found = i == Begin;
     };
@@ -141,16 +139,16 @@ namespace itp
 
 
     template <int data, class List>
-    struct static_for_each<Node<data, List>> {
+    struct static_foreach<cons<data, List>> {
         template <class Fn>
         void operator ()(Fn const& fn) {
             fn(data);
-            static_for_each<List>()(fn);
+            static_foreach<List>()(fn);
         }
     };
 
     template <int data>
-    struct static_for_each<Node<data, nil>> {
+    struct static_foreach<cons<data, nil>> {
         template <class Fn>
         void operator ()(Fn const& fn) {
             fn(data);
