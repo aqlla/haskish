@@ -1,20 +1,10 @@
 #include <iostream>
-#include "meta.h"
-
-struct nil;
-
-template <class DataType=int, class Next, DataType data>
-struct Node {
-    static constexpr DataType value = data;
-    using next = Next;
-};
-
-
+#include "tests/tests.h"
 
 
 
 
 int main() {
-    test_sum();
+    test_static_list();
     return 0;
 }
