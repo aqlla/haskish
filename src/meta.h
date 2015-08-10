@@ -11,11 +11,8 @@ namespace itp {
     template<template<class, class> class, class, class>
     struct fold;
 
-    template<class, class>
-    struct add;
-
-    template<class>
-    struct sum;
+//    template<class, class>
+////    struct add;
 
     template<template<class, class> class F, class x>
     struct fold<F, x, nil> {
@@ -27,15 +24,10 @@ namespace itp {
         using result = typename fold<F, typename F<x, y>::result, ys>::result;
     };
 
-    template<class x, class y>
-    struct add {
-        using result = Int<x::value + y::value>;
-    };
-
-    template<class xs>
-    struct sum {
-        static constexpr auto result = fold <add, Int<0>, xs>::result::value;
-    };
+//    template<class x, class y>
+//    struct add {
+//        using result = Int<x::value + y::value>;
+//    };
 };
 
 #endif //HASKISH_META_H_H

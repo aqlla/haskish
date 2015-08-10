@@ -21,6 +21,15 @@ namespace itp
     template <class List>
     struct static_for_each;
 
+    template <class List, int... xs>
+    struct make_static_list;
+
+    template <int... xs>
+    struct static_list;
+
+    template<template<int, int> class, class, int>
+    struct reduce;
+
 
     // Static linked-list node.
     template <int data, class Next=nil>
@@ -30,18 +39,46 @@ namespace itp
     };
 
 
-
-    /* ------- Mutator functions -------- */
+    /* ------- Constructor functions -------- */
 
     template <int data, class List>
-    struct PushBack {
+    struct PushFront {
         using list = Node<data, List>;
     };
 
 
-    template <int ...Nums>
-    struct make_static_list {
+    template <class List, int x>
+    struct make_static_list<List, x> {
+        using value = typename PushFront<x, List>::list;
+    };
 
+    template <class List, int x, int... xs>
+    struct make_static_list<List, x, xs...> {
+        using value = typename make_static_list<typename PushFront<x, List>::list, xs...>::value;
+    };
+
+    template <int x, int... xs>
+    struct static_list<x, xs...> {
+        using value = typename make_static_list<Node<x, nil>, xs...>::value;
+    };
+
+
+
+    /* ------- Mutator functions -------- */
+
+    template <template<int, int> class Fn, int accumulator, class xs, int x>
+    struct reduce<Fn, Node<x, xs>, accumulator> {
+        static constexpr int value = reduce<Fn, xs, Fn<accumulator, x>::value>::value;
+    };
+
+    template <template<int, int> class Fn, int accumulator>
+    struct reduce<Fn, nil, accumulator> {
+        static constexpr int value = accumulator;
+    };
+
+    template<int x, int y>
+    struct add {
+        static constexpr int value = x + y;
     };
 
 
@@ -58,7 +95,6 @@ namespace itp
     struct Size<Node<data, List>> {
         static constexpr int value = 1 + Size<List>::value;
     };
-
 
 
     /** Get the value of a given list element. */
