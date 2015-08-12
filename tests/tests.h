@@ -8,9 +8,9 @@
 #include <iostream>
 #include "../src/data_types.h"
 #include "../src/static_list.h"
-#include "../src/firstclass.h"
+#include "../src/first_class.h"
 
-#define print_all(x) for (const auto& item: x) item | uprint;
+#define uprint_all(x) for (const auto& item: x) item | uprint;
 
 using std::cout;
 using std::endl;
@@ -21,21 +21,20 @@ void test_fc() {
     std::vector<int> nums = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
     auto squared = [](int n) { return n * n; };
-    auto get_evens = [](int n) { return (n % 2) == 0; };
+    auto evens = [](int n) { return (n % 2) == 0; };
 
     // Test fmap
     "Squares:" | uprint;
     auto squares = nums | fmap >> [](int n) { return n*n; };
-    print_all(squares);
+    uprint_all(squares);
 
     // Test filter
     "\nEvens:" | uprint;
-    auto evens = nums | filter >> [](int n) { return (n % 2) == 0; };
-    print_all(evens);
+    uprint_all(nums | filter >> evens);
 
     // Combined: sum of even squares (should print 220)
     nums | fmap   >> squared
-         | filter >> get_evens
+         | filter >> evens
          | reduce >> 0 >> sum
          | uprint << "\nEven Squares: ";
 };
@@ -52,7 +51,6 @@ void test_static_list() {
          << pre::length<xs>::value
          << endl << endl;
 
-
     // for_each loop accesses each element in order.
     pre::for_each<xs> foreach_xs;
 
@@ -63,12 +61,10 @@ void test_static_list() {
     foreach_xs(print_list);
     cout << endl;
 
-
     // Or just do it all in one if ur not a pewsea.
     pre::for_each<xs>() ([](const int value) {
         cout << value * value << endl;
     });
-
 
     // reduce works in much the same way, allowing you do define a lambda to
     // accumulate the element values into one number.

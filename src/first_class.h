@@ -10,31 +10,34 @@
 
 
 /* Create a generic functor to act as a first-class function. */
-#define FIRST_CLASS(x) struct fc_##x {          \
-    template <class... Ts>                      \
-    auto operator()(Ts&&... ts) const -> decltype(x(std::forward<Ts>(ts)...)) { \
-        return x(std::forward<Ts>(ts)...);      \
-    }                                           \
+#define make_first_class(NAME, X)                        \
+struct NAME {                                            \
+    template <class... Args>                             \
+    auto operator()(Args&&... ts) const                  \
+            -> decltype(X(std::forward<Args>(ts)...)) {  \
+        return X(std::forward<Args>(ts)...);             \
+    }                                                    \
 };
 
 
-/* function to test first-class creator. */
-template <class... Args>
-void print(Args... args) {
-    (void)(int[]) {
-        ((std::cout << args), 0)...
-    };
-    std::cout << std::endl;
-}
+namespace fn_basic {
+    template<class... Args>
+    void print(Args... args) {
+        (void) (int[]) {((std::cout << args), 0)...};
+        std::cout << std::endl;
+    }
 
-template <class T>
-auto count(const T& container) -> int {
-    return container.size();
-}
+    template<class T>
+    auto count(const T &container) -> int {
+        return container.size();
+    }
+};
+
+using fn_basic::count;
+using fn_basic::print;
 
 /* create first class print function */
-//FIRST_CLASS(print);
-FIRST_CLASS(count);
+make_first_class(count, fn_basic::count);
 
 
 /* Apply a tuple to a function as an argument list. */
@@ -51,13 +54,13 @@ struct gen_int_sequence<0, ns...> {
 
 template <class Fn, class... Ts, int... ns>
 inline auto _tuple_apply(int_sequence<ns...>, const Fn &fn, const std::tuple<Ts...> &params)
-        -> decltype(fn((std::get<ns>(params))...)) {
+-> decltype(fn((std::get<ns>(params))...)) {
     return fn((std::get<ns>(params))...);
 };
 
 template <class Fn, class... Args>
 inline auto tuple_apply(const Fn& f, const std::tuple<Args...>& params)
-        -> decltype(f(std::declval<Args>()...)) {
+-> decltype(f(std::declval<Args>()...)) {
     return _tuple_apply(typename gen_int_sequence<sizeof...(Args)>::type(), f, params);
 };
 
@@ -78,7 +81,8 @@ auto operator |(T&& param, const Fn& f) -> decltype(f(param)) {
 
 // univeral function wrapper
 template <class Fn, class Before = std::tuple<>, class After = std::tuple<>>
-struct fn_universal {
+struct fn_universal
+{
 private:
     Fn f;           // function
     Before before;  // curried args before
@@ -129,12 +133,12 @@ auto operator >>(const UF& f, Arg&& arg)
 };
 
 template <class Fn>
-auto make_universal(Fn&& f) -> fn_universal<Fn> {
+auto _make_universal(Fn&& f) -> fn_universal<Fn> {
     return fn_universal<Fn>(std::forward<Fn>(f));
 }
 
-#define MAKE_UNIVERSAL(NAME, F) FIRST_CLASS(F); \
-    const auto NAME = make_universal(fc_##F());
+#define make_universal(NAME, F) make_first_class(fc_##NAME, F); \
+    const auto NAME = _make_universal(fc_##NAME());
 
 
 /* Practical example functions. */
@@ -187,11 +191,11 @@ T sum_impl(T arg, Args... args) {
 };
 
 
-MAKE_UNIVERSAL(fmap, fn_map);
-MAKE_UNIVERSAL(reduce, fn_reduce);
-MAKE_UNIVERSAL(filter, fn_filter);
-MAKE_UNIVERSAL(sum, sum_impl);
-MAKE_UNIVERSAL(uprint, print);
+make_universal(fmap, fn_map);
+make_universal(reduce, fn_reduce);
+make_universal(filter, fn_filter);
+make_universal(sum, sum_impl);
+make_universal(uprint, print);
 
 
 
