@@ -7,7 +7,7 @@
 
 #include <iostream>
 #include <vector>
-
+#include "tuple_apply.h"
 
 /* Create a generic functor to act as a first-class function. */
 #define make_first_class(NAME, X)                        \
@@ -31,51 +31,63 @@ namespace fn_basic {
     auto count(const T &container) -> int {
         return container.size();
     }
-};
 
-using fn_basic::count;
-using fn_basic::print;
+    // map
+    template <class T, class... Args, template <class...> class C, class Fn>
+    auto map(const C<T, Args...>& container, const Fn& f)
+            -> C<decltype(f(std::declval<T>()))> {
+        using resType = decltype(f(std::declval<T>()));
+        C<resType> result;
+        for (const auto& item : container) {
+            result.push_back(f(item));
+        }
+
+        return result;
+    };
+
+    // reduce
+    template <class TRes, class T, class... Args, template <class...> class C, class Fn>
+    auto reduce(const C<T, Args...>& container, const TRes& accumulator, const Fn& f)
+            -> TRes {
+        TRes result = accumulator;
+        for (const auto& item : container) {
+            result = f(result, item);
+        }
+
+        return result;
+    };
+
+    // filter
+    template <class T, class... Args, template <class...> class C, class Fn>
+    auto filter(const C<T, Args...>& container, const Fn& f)
+            -> C<T, Args...> {
+        C<T, Args...> result;
+        for (const auto& item : container) {
+            if (f(item)) {
+                result.push_back(item);
+            }
+        }
+
+        return result;
+    };
+
+    template <class T, class... Args>
+    T sum(T arg, Args... args) {
+        T result = arg;
+        [&result](...){}((result += args, 0)...);
+        return result;
+    };
+
+};
 
 /* create first class print function */
 make_first_class(count, fn_basic::count);
 
 
-/* Apply a tuple to a function as an argument list. */
-template <int ...>
-struct int_sequence {};
-
-template <int n, int ...ns>
-struct gen_int_sequence : gen_int_sequence<n-1, n-1, ns...> {};
-
-template <int ...ns>
-struct gen_int_sequence<0, ns...> {
-    using type = int_sequence<ns...>;
-};
-
-template <class Fn, class... Ts, int... ns>
-inline auto _tuple_apply(int_sequence<ns...>, const Fn &fn, const std::tuple<Ts...> &params)
--> decltype(fn((std::get<ns>(params))...)) {
-    return fn((std::get<ns>(params))...);
-};
-
-template <class Fn, class... Args>
-inline auto tuple_apply(const Fn& f, const std::tuple<Args...>& params)
--> decltype(f(std::declval<Args>()...)) {
-    return _tuple_apply(typename gen_int_sequence<sizeof...(Args)>::type(), f, params);
-};
-
-
-// override << operator to concatenate tuples
-template <class... Tup, class New>
-auto operator <<(const std::tuple<Tup...>& tup, const New& arg) -> std::tuple<Tup..., New> {
-    return std::tuple_cat(tup, std::make_tuple(arg));
-};
-
-
 // override | operator for functional piping.
 template <class T, class Fn>
-auto operator |(T&& param, const Fn& f) -> decltype(f(param)) {
-    return f(std::forward<T>(param));
+auto operator |(T&& args, const Fn& f) -> decltype(f(args)) {
+    return f(std::forward<T>(args));
 };
 
 
@@ -106,17 +118,25 @@ public:
     }
 
     template <class T>
-    auto curry(T&& param) const
-            -> decltype(fn_universal<Fn, decltype(std::tuple_cat(before, std::make_tuple(param))), After>(f, std::tuple_cat(before, std::make_tuple(param)), after)) {
-        return fn_universal<Fn, decltype(std::tuple_cat(before, std::make_tuple(param))), After>(f, std::tuple_cat(before, std::make_tuple(std::forward<T>(param))), after);
+    auto curry(T&& arg) const
+            -> decltype(fn_universal<Fn, decltype(std::tuple_cat(before, std::make_tuple(arg))), After>(f, std::tuple_cat(before, std::make_tuple(arg)), after)) {
+        return fn_universal<Fn, decltype(std::tuple_cat(before, std::make_tuple(arg))), After>(f, std::tuple_cat(before, std::make_tuple(std::forward<T>(arg))), after);
     }
 
     template <typename T>
-    auto curry_right(T&& param) const
-            -> decltype(fn_universal<Fn, Before, decltype(std::tuple_cat(after, std::make_tuple(param)))>(f, before, std::tuple_cat(after, std::make_tuple(param)))) {
-        return fn_universal<Fn, Before, decltype(std::tuple_cat(after, std::make_tuple(param)))>(f, before, std::tuple_cat(after, std::make_tuple(std::forward<T>(param))));
+    auto curry_right(T&& arg) const
+            -> decltype(fn_universal<Fn, Before, decltype(std::tuple_cat(after, std::make_tuple(arg)))>(f, before, std::tuple_cat(after, std::make_tuple(arg)))) {
+        return fn_universal<Fn, Before, decltype(std::tuple_cat(after, std::make_tuple(arg)))>(f, before, std::tuple_cat(after, std::make_tuple(std::forward<T>(arg))));
     }
 };
+
+template <class Fn>
+auto _make_universal(Fn&& f) -> fn_universal<Fn> {
+    return fn_universal<Fn>(std::forward<Fn>(f));
+}
+
+#define make_universal(NAME, F) make_first_class(fc_##NAME, F); \
+    const auto NAME = _make_universal(fc_##NAME());
 
 // override << operator or left curry
 template <class UF, class Arg>
@@ -132,70 +152,12 @@ auto operator >>(const UF& f, Arg&& arg)
     return f.template curry_right<Arg>(std::forward<Arg>(arg));
 };
 
-template <class Fn>
-auto _make_universal(Fn&& f) -> fn_universal<Fn> {
-    return fn_universal<Fn>(std::forward<Fn>(f));
-}
 
-#define make_universal(NAME, F) make_first_class(fc_##NAME, F); \
-    const auto NAME = _make_universal(fc_##NAME());
-
-
-/* Practical example functions. */
-
-// map
-template <class T, class... Args, template <class...> class C, class Fn>
-auto fn_map(const C<T, Args...>& container, const Fn& f)
-        -> C<decltype(f(std::declval<T>()))> {
-    using resType = decltype(f(std::declval<T>()));
-    C<resType> result;
-    for (const auto& item : container) {
-        result.push_back(f(item));
-    }
-
-    return result;
-};
-
-// reduce
-template <class TRes, class T, class... Args, template <class...> class C, class Fn>
-auto fn_reduce(const C<T, Args...>& container, const TRes& accumulator, const Fn& f)
-        -> TRes {
-    TRes result = accumulator;
-    for (const auto& item : container) {
-        result = f(result, item);
-    }
-
-    return result;
-};
-
-// filter
-template <class T, class... Args, template <class...> class C, class Fn>
-auto fn_filter(const C<T, Args...>& container, const Fn& f)
-        -> C<T, Args...> {
-    C<T, Args...> result;
-    for (const auto& item : container) {
-        if (f(item)) {
-            result.push_back(item);
-        }
-    }
-
-    return result;
-};
-
-
-template <class T, class... Args>
-T sum_impl(T arg, Args... args) {
-    T result = arg;
-    [&result](...){}((result += args, 0)...);
-    return result;
-};
-
-
-make_universal(fmap, fn_map);
-make_universal(reduce, fn_reduce);
-make_universal(filter, fn_filter);
-make_universal(sum, sum_impl);
-make_universal(uprint, print);
+make_universal(fmap, fn_basic::map);
+make_universal(reduce, fn_basic::reduce);
+make_universal(filter, fn_basic::filter);
+make_universal(sum, fn_basic::sum);
+make_universal(uprint, fn_basic::print);
 
 
 
