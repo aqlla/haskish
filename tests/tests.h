@@ -10,49 +10,34 @@
 #include "../src/static_list.h"
 #include "../src/firstclass.h"
 
+#define print_all(x) for (const auto& item: x) item | uprint;
+
 using std::cout;
 using std::endl;
 using namespace itp;
 
 
 void test_fc() {
-    fc_print printer;
-
-    // Function to have tuple applied to.
-    auto f = [](int x, int y, int z) {
-        return x + y - z;
-    };
-
-    fc_count count;   // Create first class count function instance.
-    std::vector<std::string> slist = {"one", "two", "three"};
-
-    // Pipe list to count and then pipe the result to the printer.
-    slist | count | printer;
-
-
     std::vector<int> nums = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
-    // Test Reduce
-    nums | reduce >> 0 >> sum | uprint << "\nSum: ";
+    auto squared = [](int n) { return n * n; };
+    auto get_evens = [](int n) { return (n % 2) == 0; };
 
     // Test fmap
-    auto squares = nums | fmap >> [](int n) {
-        return n*n;
-    };
-
-    "\nSquares:" | uprint;
-    for (const auto& item : squares)
-        item | uprint;
-
+    "Squares:" | uprint;
+    auto squares = nums | fmap >> [](int n) { return n*n; };
+    print_all(squares);
 
     // Test filter
-    auto evens = nums | filter >> [](int n) {
-        return (n % 2) == 0;
-    };
-
     "\nEvens:" | uprint;
-    for (const auto& item : evens)
-        item | uprint;
+    auto evens = nums | filter >> [](int n) { return (n % 2) == 0; };
+    print_all(evens);
+
+    // Combined: sum of even squares (should print 220)
+    nums | fmap   >> squared
+         | filter >> get_evens
+         | reduce >> 0 >> sum
+         | uprint << "\nEven Squares: ";
 };
 
 
