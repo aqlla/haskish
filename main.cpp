@@ -1,7 +1,7 @@
 #include "tests/tests.h"
-#include "src/firstclass.h"
 
 int main() {
+//    test_static_list();
     test_fc();
     return 0;
 }
