@@ -30,7 +30,7 @@ void test_fc() {
 
     // Test filter
     "\nEvens:" | uprint;
-    uprint_all(nums | filter >> evens);
+    nums | filter >> evens | uprint;
 
     // Combined: sum of even squares (should print 220)
     nums | fmap   >> squared
